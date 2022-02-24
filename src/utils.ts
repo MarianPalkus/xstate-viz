@@ -1,25 +1,27 @@
 import { TypedDocumentNode } from '@graphql-typed-document-node/core';
+import { useSelector } from '@xstate/react';
+import { print } from 'graphql';
+import { NextRouter } from 'next/router';
 import * as React from 'react';
 import {
   ActionObject,
   ActionTypes,
+  ActorRef,
   AnyEventObject,
+  AnyInterpreter,
   CancelAction,
   Interpreter,
   SendAction,
   StateNode,
-  TransitionDefinition,
+  TransitionDefinition
 } from 'xstate';
 import {
   AnyState,
   AnyStateMachine,
   EmbedMode,
   EmbedPanel,
-  ParsedEmbed,
+  ParsedEmbed
 } from './types';
-import { print } from 'graphql';
-import { useSelector } from '@xstate/react';
-import { NextRouter } from 'next/router';
 
 export function isNullEvent(eventName: string) {
   return eventName === ActionTypes.NullEvent;
@@ -429,3 +431,21 @@ export const isAcceptingSpaceNatively = (
   el.tagName === 'INPUT' ||
   isTextInputLikeElement(el) ||
   getRoles(el).includes('button');
+
+export const findChildService = (services: ActorRef<any>[], sessionId: string, maxDepth = 100): AnyInterpreter | undefined => {
+  return services.reduce<AnyInterpreter | undefined>((prev, child) => {
+    if (maxDepth === 0) {
+      return prev
+    }
+    if (prev) {
+      return prev
+    }
+    if (child instanceof Interpreter) {
+      if (child.sessionId === sessionId) {
+        return child
+      }
+      return findChildService(Array.from(child.children.values()), sessionId, maxDepth - 1)
+    }
+    return undefined
+  }, undefined)
+}
