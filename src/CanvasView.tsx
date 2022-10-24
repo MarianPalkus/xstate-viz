@@ -3,6 +3,7 @@ import {
   MinusIcon,
   RepeatIcon,
   QuestionOutlineIcon,
+  ViewIcon
 } from '@chakra-ui/icons';
 import {
   Box,
@@ -20,11 +21,11 @@ import {
 } from '@chakra-ui/react';
 import { useSelector } from '@xstate/react';
 import xstatePkgJson from 'xstate/package.json';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CanvasContainer } from './CanvasContainer';
 import { useCanvas } from './CanvasContext';
 import { canZoom, canZoomIn, canZoomOut } from './canvasMachine';
-import { toDirectedGraph } from './directedGraph';
+import { toDirectedGraph, UserUIPreferences } from './directedGraph';
 import { Graph } from './Graph';
 import { useSimulation, useSimulationMode } from './SimulationContext';
 import { CanvasHeader } from './CanvasHeader';
@@ -47,13 +48,20 @@ export const CanvasView: React.FC = () => {
       ? state.context.serviceDataMap[state.context.currentSessionId!]?.machine
       : undefined;
   });
+  const [userUIPreferences, setUserUIPreferences] = useState<UserUIPreferences>({
+    graphCollapseMap: {},
+    graphLayout: {
+      layeredAlgorithmWrapping: 'MULTI_EDGE'
+    }
+  })
+  const [forcedGraphReRenderCounter, setForcedGraphReRenderCounter] = useState(0)
   const isLayoutPending = useSelector(simService, (state) =>
     state.hasTag('layoutPending'),
   );
   const isEmpty = useSelector(simService, (state) => state.hasTag('empty'));
   const digraph = useMemo(
-    () => (machine ? toDirectedGraph(machine) : undefined),
-    [machine],
+    () => (machine ? toDirectedGraph(machine, userUIPreferences) : undefined),
+    [machine, userUIPreferences],
   );
 
   const shouldEnableZoomOutButton = useSelector(
@@ -96,7 +104,7 @@ export const CanvasView: React.FC = () => {
         </Box>
       )}
       <CanvasContainer panModeEnabled={panModeEnabled}>
-        {digraph && <Graph digraph={digraph} />}
+        {digraph && <Graph digraph={digraph} userViewPreferences={userUIPreferences} key={forcedGraphReRenderCounter} />}
         {isLayoutPending && (
           <Overlay>
             <Box textAlign="center">
@@ -184,6 +192,56 @@ export const CanvasView: React.FC = () => {
               RESET
             </Button>
           )}
+          <Menu closeOnSelect={true} placement="top-start">
+            <MenuButton
+              as={IconButton}
+              size="sm"
+              marginLeft={2}
+              aria-label="View Preferences"
+              variant="secondary"
+              icon={
+                <ViewIcon
+                  boxSize={6}
+                  css={{ '& circle': { display: 'none' } }}
+                />
+              }
+            />
+            <Portal>
+              <MenuList fontSize="sm" padding="0">
+                <MenuItem
+                  onClick={() => setUserUIPreferences({
+                    ...userUIPreferences,
+                    graphCollapseMap: digraph?.children.reduce((prev, node) => ({ ...prev, [node.id]: "collapsed" }), {}) || {}
+                  })}
+                >
+                  COLLAPSE STATES TO LEVEL 1
+                </MenuItem>
+                <MenuItem
+                  onClick={() => setUserUIPreferences({
+                    ...userUIPreferences,
+                    graphCollapseMap: {}
+                  })}
+                >
+                  EXPAND ALL STATES
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setUserUIPreferences({
+                      ...userUIPreferences,
+                      graphLayout: {
+                        ...userUIPreferences.graphLayout,
+                        layeredAlgorithmWrapping: userUIPreferences.graphLayout.layeredAlgorithmWrapping === "MULTI_EDGE" ? "NONE" : "MULTI_EDGE"
+                      }
+                    });
+                    setForcedGraphReRenderCounter(forcedGraphReRenderCounter + 1)
+                  }}
+                >
+                  GRAPH LAYOUT WRAPPING {userUIPreferences.graphLayout.layeredAlgorithmWrapping === "MULTI_EDGE" ? "ALTERNATIVE" : "DEFAULT"}
+                </MenuItem>
+              </MenuList>
+            </Portal>
+          </Menu>
+
           {!embed?.isEmbedded && (
             <Menu closeOnSelect={true} placement="top-end">
               <MenuButton

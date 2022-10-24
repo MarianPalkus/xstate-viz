@@ -3,6 +3,7 @@ import {
   DirectedGraphEdge,
   DirectedGraphNode,
   getBackLinkMap,
+  UserUIPreferences,
 } from './directedGraph';
 import type {
   ELK,
@@ -189,6 +190,7 @@ interface ElkRunContext {
   relativeNodeEdgeMap: RelativeNodeEdgeMap;
   backLinkMap: DigraphBackLinkMap;
   rectMap: DOMRectMap;
+  userViewPreferences: UserUIPreferences
 }
 
 function getElkChild(
@@ -218,9 +220,9 @@ function getElkChild(
     id: node.id,
     ...(!node.children.length
       ? {
-          width: nodeRect.width,
-          height: nodeRect.height,
-        }
+        width: nodeRect.width,
+        height: nodeRect.height,
+      }
       : undefined),
     node,
     children: getElkChildren(node, runContext),
@@ -240,23 +242,22 @@ function getElkChild(
       .concat(
         hasSelfEdges
           ? [
-              {
-                id: getSelfPortId(node.id),
-                width: 5,
-                height: 5,
-                layoutOptions: {},
-              },
-            ]
+            {
+              id: getSelfPortId(node.id),
+              width: 5,
+              height: 5,
+              layoutOptions: {},
+            },
+          ]
           : [],
       ),
     layoutOptions: {
-      'elk.padding': `[top=${
-        contentRect.height + 30
-      }, left=30, right=30, bottom=30]`,
+      'elk.padding': `[top=${contentRect.height + 30
+        }, left=30, right=30, bottom=30]`,
       'elk.spacing.labelLabel': '10',
       ...(shouldWrap && {
         'elk.aspectRatio': '2',
-        'elk.layered.wrapping.strategy': 'MULTI_EDGE',
+        'elk.layered.wrapping.strategy': runContext.userViewPreferences.graphLayout.layeredAlgorithmWrapping,
         ...(shouldCompact && {
           'elk.layered.compaction.postCompaction.strategy': 'LEFT',
         }),
@@ -324,6 +325,7 @@ function elkJSON(elkNode: ElkNode): any {
 
 export async function getElkGraph(
   rootDigraphNode: DirectedGraphNode,
+  userViewPreferences: UserUIPreferences
 ): Promise<ElkNode> {
   const rectMap = await getRectMap(rootDigraphNode.id);
   const relativeNodeEdgeMap = getRelativeNodeEdgeMap(rootDigraphNode);
@@ -333,6 +335,7 @@ export async function getElkGraph(
     relativeNodeEdgeMap,
     backLinkMap,
     rectMap,
+    userViewPreferences
   };
 
   // The root node is an invisible node; the machine node is a direct child of this node.
@@ -380,25 +383,25 @@ export async function getElkGraph(
 
     const translatedSections: ElkEdgeSection[] = elkContainingNode
       ? edge.sections.map((section) => {
-          return {
-            ...section,
-            startPoint: {
-              x: section.startPoint.x + elkContainingNode.absolutePosition.x,
-              y: section.startPoint.y + elkContainingNode.absolutePosition.y,
-            },
-            endPoint: {
-              x: section.endPoint.x + elkContainingNode.absolutePosition.x,
-              y: section.endPoint.y + elkContainingNode.absolutePosition.y,
-            },
-            bendPoints:
-              section.bendPoints?.map((bendPoint) => {
-                return {
-                  x: bendPoint.x + elkContainingNode.absolutePosition.x,
-                  y: bendPoint.y + elkContainingNode.absolutePosition.y,
-                };
-              }) ?? [],
-          };
-        })
+        return {
+          ...section,
+          startPoint: {
+            x: section.startPoint.x + elkContainingNode.absolutePosition.x,
+            y: section.startPoint.y + elkContainingNode.absolutePosition.y,
+          },
+          endPoint: {
+            x: section.endPoint.x + elkContainingNode.absolutePosition.x,
+            y: section.endPoint.y + elkContainingNode.absolutePosition.y,
+          },
+          bendPoints:
+            section.bendPoints?.map((bendPoint) => {
+              return {
+                x: bendPoint.x + elkContainingNode.absolutePosition.x,
+                y: bendPoint.y + elkContainingNode.absolutePosition.y,
+              };
+            }) ?? [],
+        };
+      })
       : edge.sections;
 
     edge.edge.sections = translatedSections;

@@ -105,34 +105,138 @@ export class DirectedGraphEdge {
   }
 }
 
-export function toDirectedGraph(stateNode: StateNode): DirectedGraphNode {
+function getStateNodeLevel(stateNode: StateNode): number {
+  let currentNode: StateNode | undefined = stateNode
+  let currentLevel = 0
+  while (currentNode?.parent) {
+    currentNode = currentNode.parent
+    currentLevel++
+  }
+  return currentLevel
+}
+
+function getStateNodeParentAtLevel(stateNode: StateNode, targetLevel: number): StateNode | undefined {
+  let currentNode: StateNode | undefined = stateNode
+  let currentLevel = getStateNodeLevel(stateNode)
+  while (targetLevel < currentLevel && currentNode?.parent) {
+    currentNode = currentNode.parent
+    currentLevel--
+  }
+
+  return currentNode
+}
+
+function getChildEdgesRecursively(childGraph: DirectedGraphNode): DirectedGraphEdge[] {
+  return flatten(
+    [
+      childGraph.edges,
+      ...childGraph.children.map(getChildEdgesRecursively)
+    ]
+  )
+}
+
+function getCollapsedParentNode(stateNode: StateNode, userUIPreferences: UserUIPreferences): StateNode | undefined {
+  let currentNode: StateNode | undefined = stateNode
+
+  while (currentNode?.parent) {
+    currentNode = currentNode.parent
+
+    if (userUIPreferences.graphCollapseMap[currentNode?.id] === "collapsed") {
+      return currentNode
+    }
+  }
+
+  return undefined
+}
+
+export interface UserUIPreferences {
+  readonly graphCollapseMap: { [nodeId: string]: "collapsed" | undefined }
+  readonly graphLayout: {
+    readonly layeredAlgorithmWrapping: "MULTI_EDGE" | "NONE"
+  }
+}
+export function toDirectedGraph(stateNode: StateNode, userUIPreferences: UserUIPreferences): DirectedGraphNode {
+  const isNodeCollapsed = userUIPreferences.graphCollapseMap[stateNode.id] === "collapsed" //stateNodeLevel === 1 && stateNode.id !== "parentMachine.not started"
+
   const edges: DirectedGraphEdge[] = flatten(
     stateNode.transitions.map((t, transitionIndex) => {
       const targets = t.target ? t.target : [stateNode];
 
-      return targets.map((target, targetIndex) => {
-        const edge = new DirectedGraphEdge({
-          id: `${stateNode.id}:${transitionIndex}:${targetIndex}`,
-          source: stateNode,
-          target,
-          transition: t,
-          label: {
-            text: t.eventType,
-            x: 0,
-            y: 0,
-          },
-          sections: [],
-        });
+      return targets
+        .map((target, targetIndex) => {
+          const edge = new DirectedGraphEdge({
+            id: `${stateNode.id}:${transitionIndex}:${targetIndex}`,
+            source: stateNode,
+            target: target!,
+            transition: t,
+            label: {
+              text: t.eventType,
+              x: 0,
+              y: 0,
+            },
+            sections: [],
+          });
 
-        return edge;
-      });
+          return edge;
+        });
     }),
   );
+
+  if (isNodeCollapsed) {
+    const childrenGraphs = getChildren(stateNode).map((sn) => toDirectedGraph(sn, userUIPreferences))
+
+    const childEdges = flatten(
+      childrenGraphs.map(getChildEdgesRecursively)
+    )
+
+    const allTransformedEdges = [...edges, ...childEdges]
+      .map(edge => {
+        let transformedEdge = {
+          ...edge
+        }
+        const isSourceCollapsed = userUIPreferences.graphCollapseMap[edge.source.id] === "collapsed"
+        const edgeSourceCollapsedParentNode = getCollapsedParentNode(edge.source, userUIPreferences)
+        const shouldTransformSourceNode = !isSourceCollapsed && !!edgeSourceCollapsedParentNode
+        if (shouldTransformSourceNode) {
+          transformedEdge = {
+            ...transformedEdge,
+            source: edgeSourceCollapsedParentNode
+          }
+        }
+
+        const isTargetCollapsed = userUIPreferences.graphCollapseMap[edge.target.id] === "collapsed"
+        const edgeTargetCollapsedParentNode = getCollapsedParentNode(edge.target, userUIPreferences)
+        const shouldTransformTargetNode = !isTargetCollapsed && !!edgeTargetCollapsedParentNode
+        if (shouldTransformTargetNode) {
+          transformedEdge = {
+            ...transformedEdge,
+            target: edgeTargetCollapsedParentNode,
+          }
+        }
+
+        if ((shouldTransformSourceNode || shouldTransformTargetNode) && transformedEdge.source == transformedEdge.target) {
+          return undefined // TODO: workaround to not include "internal" edges of collapsed nodes
+        }
+
+        return transformedEdge
+      })
+      .filter(edge => edge !== undefined) // TODO: workaround to not include "internal" edges of collapsed nodes
+      .map(edge => edge!) // TODO: workaround to not include "internal" edges of collapsed nodes
+
+    const graph = new DirectedGraphNode({
+      id: stateNode.id,
+      stateNode,
+      children: [],
+      edges: allTransformedEdges,
+      ports: [],
+    });
+    return graph
+  }
 
   const graph = new DirectedGraphNode({
     id: stateNode.id,
     stateNode,
-    children: getChildren(stateNode).map((sn) => toDirectedGraph(sn)),
+    children: getChildren(stateNode).map((sn) => toDirectedGraph(sn, userUIPreferences)),
     edges,
     ports: [],
   });

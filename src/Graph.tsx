@@ -1,4 +1,4 @@
-import { DirectedGraphNode } from './directedGraph';
+import { DirectedGraphNode, UserUIPreferences } from './directedGraph';
 import { useMachine, useSelector } from '@xstate/react';
 import { useEffect, useMemo, memo } from 'react';
 import { Edges } from './Edges';
@@ -19,11 +19,12 @@ const MemoizedGraphNode = memo(GraphNode);
 const MemoizedTransitionViz = memo(TransitionViz);
 const MemoizedMachineViz = memo(MachineViz);
 
-export const Graph: React.FC<{ digraph: DirectedGraphNode }> = ({
+export const Graph: React.FC<{ digraph: DirectedGraphNode; userViewPreferences: UserUIPreferences }> = ({
   digraph,
+  userViewPreferences
 }) => {
   const sim = useSimulation();
-  const [state, send] = useMachine(() => createElkMachine(digraph), {
+  const [state, send] = useMachine(() => createElkMachine(digraph, userViewPreferences), {
     actions: {
       notifyLayoutPending: () => {
         sim.send('LAYOUT.PENDING');

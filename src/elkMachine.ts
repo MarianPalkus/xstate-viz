@@ -1,9 +1,9 @@
 import { assign, DoneInvokeEvent } from 'xstate';
 import { createModel } from 'xstate/lib/model';
-import { DirectedGraphNode } from './directedGraph';
+import { DirectedGraphNode, UserUIPreferences } from './directedGraph';
 import { getElkGraph, StateElkNode } from './graphUtils';
 
-export const createElkMachine = (digraph: DirectedGraphNode) => {
+export const createElkMachine = (digraph: DirectedGraphNode, userViewPreferences: UserUIPreferences) => {
   const elkModel = createModel(
     {
       digraph,
@@ -23,7 +23,7 @@ export const createElkMachine = (digraph: DirectedGraphNode) => {
       loading: {
         entry: 'notifyLayoutPending',
         invoke: {
-          src: (ctx) => getElkGraph(ctx.digraph),
+          src: (ctx) => getElkGraph(ctx.digraph, userViewPreferences),
           onDone: {
             target: 'success',
             actions: [
