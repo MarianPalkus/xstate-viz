@@ -1,4 +1,4 @@
-import { Link } from '@chakra-ui/react';
+import { Link, Img } from '@chakra-ui/react';
 import { useActor } from '@xstate/react';
 import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -125,6 +125,13 @@ export const StateNodeViz: React.FC<{
         <div
           data-viz="stateNode-content"
           data-rect-id={`${stateNode.id}:content`}
+          style={
+            {
+              ...(stateNode?.meta?.__XSTATE_VIZ_OPTIONS?.nodeType === "decision" ? {
+                backgroundColor: "rgb(128, 62, 143)"
+              } : {})
+            }
+          }
         >
           <div data-viz="stateNode-header">
             {['history', 'final'].includes(stateNode.type) && (
@@ -147,6 +154,7 @@ export const StateNodeViz: React.FC<{
               </div>
             )}
           </div>
+          {stateNode.meta?.__XSTATE_VIZ_OPTIONS?.image?.src && (<Img width='376px' minWidth='376px' height='813px' maxHeight='813px' objectFit='scale-down' objectPosition='center top' src={stateNode.meta?.__XSTATE_VIZ_OPTIONS?.image?.src || "none"} />)}
           {stateNode.definition.invoke.length > 0 && (
             <div data-viz="stateNode-invocations">
               {stateNode.definition.invoke.map((invokeDef) => {

@@ -151,8 +151,9 @@ function getCollapsedParentNode(stateNode: StateNode, userUIPreferences: UserUIP
 
 export interface UserUIPreferences {
   readonly graphCollapseMap: { [nodeId: string]: "collapsed" | undefined }
-  readonly graphLayout: {
-    readonly layeredAlgorithmWrapping: "MULTI_EDGE" | "NONE"
+  readonly graphLayout?: {
+    readonly layeredAlgorithmWrapping?: "MULTI_EDGE" | "NONE"
+    readonly mergeEdges?: boolean
   }
 }
 export function toDirectedGraph(stateNode: StateNode, userUIPreferences: UserUIPreferences): DirectedGraphNode {

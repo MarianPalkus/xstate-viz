@@ -9,6 +9,7 @@ import {
   Box,
   Button,
   ButtonGroup,
+  Checkbox,
   IconButton,
   Link,
   Menu,
@@ -230,13 +231,27 @@ export const CanvasView: React.FC = () => {
                       ...userUIPreferences,
                       graphLayout: {
                         ...userUIPreferences.graphLayout,
-                        layeredAlgorithmWrapping: userUIPreferences.graphLayout.layeredAlgorithmWrapping === "MULTI_EDGE" ? "NONE" : "MULTI_EDGE"
+                        layeredAlgorithmWrapping: userUIPreferences.graphLayout?.layeredAlgorithmWrapping === "MULTI_EDGE" ? "NONE" : "MULTI_EDGE"
                       }
                     });
                     setForcedGraphReRenderCounter(forcedGraphReRenderCounter + 1)
                   }}
                 >
-                  GRAPH LAYOUT WRAPPING {userUIPreferences.graphLayout.layeredAlgorithmWrapping === "MULTI_EDGE" ? "ALTERNATIVE" : "DEFAULT"}
+                  <Checkbox isChecked={userUIPreferences.graphLayout?.layeredAlgorithmWrapping === "NONE"} disabled /> USE ALTERNATIVE GRAPH LAYOUT WRAPPING
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setUserUIPreferences({
+                      ...userUIPreferences,
+                      graphLayout: {
+                        ...userUIPreferences.graphLayout,
+                        mergeEdges: !userUIPreferences.graphLayout?.mergeEdges
+                      }
+                    });
+                    setForcedGraphReRenderCounter(forcedGraphReRenderCounter + 1)
+                  }}
+                >
+                  <Checkbox isChecked={userUIPreferences.graphLayout?.mergeEdges === true} disabled /> MERGE EDGES
                 </MenuItem>
               </MenuList>
             </Portal>

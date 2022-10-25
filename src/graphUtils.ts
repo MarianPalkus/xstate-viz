@@ -108,6 +108,8 @@ function getElkEdge(
   const targetPortId = getPortId(edge);
   const isSelfEdge = edge.source === edge.target;
   const isInitialEdge = edge.source.parent?.initial === edge.source.key;
+  const isInvokeDoneEdge = edge.transition.eventType.startsWith('done.invoke')
+  const isTargetInitialNode = edge.target.parent?.initial === edge.target.key;
 
   const sources = [edge.source.id];
   const targets = isSelfEdge ? [getSelfPortId(edge.target.id)] : [targetPortId];
@@ -135,7 +137,7 @@ function getElkEdge(
     layoutOptions: {
       // Ensure that all edges originating from initial states point RIGHT
       // (give them direction priority) so that the initial states can end up on the top left
-      'elk.layered.priority.direction': isInitialEdge ? '1' : '0',
+      'elk.layered.priority.direction': isInitialEdge ? '10' : (isInvokeDoneEdge && !isTargetInitialNode ? '1' : '0'),
     },
   };
 }
@@ -255,12 +257,15 @@ function getElkChild(
       'elk.padding': `[top=${contentRect.height + 30
         }, left=30, right=30, bottom=30]`,
       'elk.spacing.labelLabel': '10',
+      'elk.layered.wrapping.strategy': runContext.userViewPreferences.graphLayout?.layeredAlgorithmWrapping || "",
       ...(shouldWrap && {
         'elk.aspectRatio': '2',
-        'elk.layered.wrapping.strategy': runContext.userViewPreferences.graphLayout.layeredAlgorithmWrapping,
+        'elk.layered.wrapping.strategy': "MULTI_EDGE",
         ...(shouldCompact && {
           'elk.layered.compaction.postCompaction.strategy': 'LEFT',
         }),
+        'elk.layered.mergeEdges': runContext.userViewPreferences.graphLayout?.mergeEdges === true ? 'true' : 'false',
+        'elk.layered.mergeHierarchyEdges': runContext.userViewPreferences.graphLayout?.mergeEdges === true ? 'true' : 'false',
       }),
     },
   };
@@ -351,6 +356,8 @@ export async function getElkGraph(
       'elk.layered.wrapping.strategy': 'MULTI_EDGE',
       'elk.aspectRatio': '2',
       'elk.direction': 'RIGHT',
+      'elk.layered.mergeEdges': runContext.userViewPreferences.graphLayout?.mergeEdges === true ? 'true' : 'false',
+      'elk.layered.mergeHierarchyEdges': runContext.userViewPreferences.graphLayout?.mergeEdges === true ? 'true' : 'false',
     },
   });
 
